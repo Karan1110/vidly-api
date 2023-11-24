@@ -14,7 +14,7 @@ router.get("/", async (req, res) => {
 })
 
 const storage = multer.diskStorage({
-  destination: "./videos",
+  destination: "../videos",
   filename: (req, file, cb) => {
     const filename = `will be changed`
     cb(null, filename)
