@@ -7,9 +7,11 @@ const users = require("../routes/users")
 const auth = require("../routes/auth")
 const returns = require("../routes/returns")
 const error = require("../middleware/error")
+const path = require("path")
 
 module.exports = function (app) {
-  app.use(express.static("../uploads"))
+  console.log(path.join(__dirname, "../uploads"))
+  app.use(express.static(path.join(__dirname, "../uploads")))
   app.use(express.json())
   app.use("/api/genres", genres)
   app.use("/api/customers", customers)

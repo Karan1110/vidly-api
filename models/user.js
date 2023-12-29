@@ -2,7 +2,7 @@ const config = require("config");
 const jwt = require("jsonwebtoken");
 const Joi = require("joi");
 const mongoose = require("mongoose");
-const { Movie } = require("./movie");
+const { movieSchema } = require("./movie");
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
     maxlength: 1024
   },
   isAdmin: Boolean,
-  watchlist : [Movie]
+  watchlist : [movieSchema]
 });
 
 userSchema.methods.generateAuthToken = function() {
