@@ -1,7 +1,9 @@
+require("events").EventEmitter.defaultMaxListeners = 15
+const path = require("path")
 const { Movie, validate } = require("../models/movie")
 const { Genre } = require("../models/genre")
 const auth = require("../middleware/auth")
-const admin = require("../middleware/admin")
+const adminMiddleware = require("../middleware/admin")
 const validateObjectId = require("../middleware/validateObjectId")
 const moment = require("moment")
 const mongoose = require("mongoose")
@@ -9,7 +11,19 @@ const express = require("express")
 const multer = require("multer")
 const router = express.Router()
 const { User } = require("../models/user.js")
-const path = require("path")
+const admin = require("firebase-admin")
+const serviceAccount = require(path.join(
+  __dirname,
+  "../karanstore-2c850-firebase-adminsdk-5ry9v-ff376d22e0.json"
+))
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  storageBucket: "karanstore-2c850.appspot.com",
+})
+
+const bucket = admin.storage().bucket()
+const storage = multer.memoryStorage()
+const upload = multer({ storage: storage })
 
 router.get("/", async (req, res) => {
   const movies = await Movie.find().select("-__v").sort("name")
@@ -97,27 +111,13 @@ router.get("/rating/:id", validateObjectId, async (req, res) => {
   res.status(200).send({ averageRating, totalRatings })
 })
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "../", "/uploads")) // Specify the destination folder
-  },
-  filename: function (req, file, cb) {
-    // Preserve the original extension of the file
-    const ext = path.extname(file.originalname)
-    cb(null, Date.now() + ext)
-  },
-})
-
-// Set up the multer middleware with the custom storage engine
-const upload = multer({ storage: storage })
-
 router.post(
   "/",
   [
     auth,
     upload.fields([
       { name: "cover", maxCount: 1 },
-      { name: "trailer", maxCount: 1 },
+      { name: "video", maxCount: 1 },
     ]),
   ],
   async (req, res) => {
@@ -129,10 +129,34 @@ router.post(
       if (!genre) return res.status(400).send("Invalid genre.")
 
       // Check if file is present
-      if (!req.files || !req.files["cover"] || !req.files["trailer"]) {
-        return res.status(400).send("cover file is  required.")
+      if (!req.files || !req.files["cover"] || !req.files["video"]) {
+        return res.status(400).send("Cover file and video file are required.")
       }
-      console.log(req.files["cover"][0].filename)
+
+      const coverFile = req.files["cover"][0]
+      const trailerFile = req.files["video"][0]
+
+      // Upload files to Firebase Storage in specific directories
+      const coverFileName = `${Date.now()}_${coverFile.originalname}`
+      const trailerFileName = `${Date.now()}_${trailerFile.originalname}`
+
+      const coverUpload = bucket.file(`images/${coverFileName}`)
+      const trailerUpload = bucket.file(`videos/${trailerFileName}`)
+
+      await Promise.all([
+        coverUpload.save(coverFile.buffer),
+        trailerUpload.save(trailerFile.buffer),
+      ])
+
+      const [coverURL] = await coverUpload.getSignedUrl({
+        action: "read",
+        expires: "03-09-2491",
+      })
+      const [trailerURL] = await trailerUpload.getSignedUrl({
+        action: "read",
+        expires: "03-09-2491",
+      })
+
       const movie = new Movie({
         _id: mongoose.Types.ObjectId(),
         title: req.body.title,
@@ -143,8 +167,8 @@ router.post(
         numberInStock: parseInt(req.body.numberInStock),
         dailyRentalRate: parseInt(req.body.dailyRentalRate),
         publishDate: moment().toJSON(),
-        cover: req.files["cover"][0].filename,
-        trailer: req.files["trailer"][0].filename,
+        cover: coverURL,
+        video: trailerURL,
       })
 
       await movie.save()
@@ -162,7 +186,7 @@ router.put(
     auth,
     upload.fields([
       { name: "cover", maxCount: 1 },
-      { name: "trailer", maxCount: 1 },
+      { name: "video", maxCount: 1 },
     ]),
   ],
   async (req, res) => {
@@ -174,10 +198,8 @@ router.put(
       if (!genre) return res.status(400).send("Invalid genre.")
 
       // Check if file is present
-      if (!req.files || !req.files["cover"] || !req.files["trailer"]) {
-        return res
-          .status(400)
-          .send("Both cover and trailer files are required.")
+      if (!req.files || !req.files["cover"] || !req.files["video"]) {
+        return res.status(400).send("Both cover and video files are required.")
       }
 
       const updatedMovie = {
@@ -188,9 +210,26 @@ router.put(
         },
         numberInStock: req.body.numberInStock,
         dailyRentalRate: req.body.dailyRentalRate,
-        cover: req.files["cover"][0].filename,
-        trailer: req.files["trailer"][0].filename,
       }
+
+      // Upload updated files to Firebase Storage
+      const coverFile = req.files["cover"][0]
+      const trailerFile = req.files["video"][0]
+
+      const coverFileName = `${Date.now()}_${coverFile.originalname}`
+      const trailerFileName = `${Date.now()}_${trailerFile.originalname}`
+
+      const coverUpload = bucket.file(`images/${coverFileName}`)
+      const trailerUpload = bucket.file(`videos/${trailerFileName}`)
+
+      await Promise.all([
+        coverUpload.save(coverFile.buffer),
+        trailerUpload.save(trailerFile.buffer),
+      ])
+
+      // Update movie document with the new file names
+      updatedMovie.cover = coverFileName
+      updatedMovie.video = trailerFileName
 
       const movie = await Movie.findByIdAndUpdate(req.params.id, updatedMovie, {
         new: true,
@@ -208,8 +247,7 @@ router.put(
     }
   }
 )
-
-router.delete("/:id", [auth, admin], async (req, res) => {
+router.delete("/:id", [auth, adminMiddleware], async (req, res) => {
   const movie = await Movie.findByIdAndRemove(req.params.id)
 
   if (!movie)

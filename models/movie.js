@@ -25,7 +25,7 @@ const movieSchema = new mongoose.Schema({
     min: 0,
     max: 255,
   },
-  trailer: String,
+  video: String,
   cover: String,
   likes: {
     type: Number,
