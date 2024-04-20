@@ -1,7 +1,6 @@
 const { Rental, validate } = require("../models/rental");
 const { Movie } = require("../models/movie");
-const { Customer } = require("../models/customer");
-const { Genre } = require("../models/genre");
+const { User } = require("../models/user");
 const auth = require("../middleware/auth");
 const mongoose = require("mongoose");
 const Fawn = require("fawn");
@@ -12,9 +11,7 @@ mongoose.connect(config.get("db"));
 Fawn.init(mongoose);
 
 router.get("/", auth, async (req, res) => {
-  const rentals = await Rental.find()
-    .select("-__v")
-    .sort("-dateOut");
+  const rentals = await Rental.find().select("-__v").sort("-dateOut");
   res.send(rentals);
 });
 
@@ -22,8 +19,8 @@ router.post("/", auth, async (req, res) => {
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
 
-  const customer = await Customer.findById(req.body.customerId);
-  if (!customer) return res.status(400).send("Invalid customer.");
+  const user = await User.findById(req.body.userId);
+  if (!user) return res.status(400).send("Invalid user.");
 
   const movie = await Movie.findById(req.body.movieId);
   if (!movie) return res.status(400).send("Invalid movie.");
@@ -32,18 +29,20 @@ router.post("/", auth, async (req, res) => {
     return res.status(400).send("Movie not in stock.");
 
   let rental = new Rental({
-    customer: {
-      _id: customer._id,
-      name: customer.name,
-      phone: customer.phone
+    user: {
+      _id: user._id,
+      name: user.name,
+      phone: user.phone,
     },
     movie: {
       _id: movie._id,
       title: movie.title,
-      dailyRentalRate: movie.dailyRentalRate
-    }
+      dailyRentalRate: movie.dailyRentalRate,
+    },
   });
 
+  user.movies.push(movie);
+  await user.save();
   try {
     await new Fawn.Task()
       .save("rentals", rental)
@@ -51,7 +50,7 @@ router.post("/", auth, async (req, res) => {
         "movies",
         { _id: movie._id },
         {
-          $inc: { numberInStock: -1 }
+          $inc: { numberInStock: -1 },
         }
       )
       .run();
@@ -70,5 +69,7 @@ router.get("/:id", [auth], async (req, res) => {
 
   res.send(rental);
 });
+
+
 
 module.exports = router;

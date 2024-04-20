@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 
 describe('/api/returns', () => {
   let server; 
-  let customerId; 
+  let userId; 
   let movieId;
   let rental;
   let movie; 
@@ -17,13 +17,13 @@ describe('/api/returns', () => {
     return request(server)
       .post('/api/returns')
       .set('x-auth-token', token)
-      .send({ customerId, movieId });
+      .send({ userId, movieId });
   };
   
   beforeEach(async () => { 
     server = require('../../index'); 
 
-    customerId = mongoose.Types.ObjectId();
+    userId = mongoose.Types.ObjectId();
     movieId = mongoose.Types.ObjectId();
     token = new User().generateAuthToken();
 
@@ -37,8 +37,8 @@ describe('/api/returns', () => {
     await movie.save();
 
     rental = new Rental({
-      customer: {
-        _id: customerId,
+      user: {
+        _id: userId,
         name: '12345',
         phone: '12345'
       },
@@ -65,8 +65,8 @@ describe('/api/returns', () => {
     expect(res.status).toBe(401);
   });
 
-  it('should return 400 if customerId is not provided', async () => {
-    customerId = ''; 
+  it('should return 400 if userId is not provided', async () => {
+    userId = ''; 
     
     const res = await exec();
 
@@ -81,7 +81,7 @@ describe('/api/returns', () => {
     expect(res.status).toBe(400);
   });
 
-  it('should return 404 if no rental found for the customer/movie', async () => {
+  it('should return 404 if no rental found for the user/movie', async () => {
     await Rental.remove({});
 
     const res = await exec();
@@ -136,6 +136,6 @@ describe('/api/returns', () => {
 
     expect(Object.keys(res.body)).toEqual(
       expect.arrayContaining(['dateOut', 'dateReturned', 'rentalFee',
-      'customer', 'movie']));
+      'user', 'movie']));
   });
 });

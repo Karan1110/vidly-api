@@ -4,11 +4,34 @@ const _ = require("lodash")
 const { User, validate } = require("../models/user")
 const express = require("express")
 const router = express.Router()
+const admin = require("../middleware/admin");
 
 router.get("/me", auth, async (req, res) => {
   const user = await User.findById(req.user._id).select("-password")
-  res.send(user)
+  res.json(user)
 })
+
+router.get("/", [auth, admin], async (req, res) => {
+  const users = await User.aggregate([
+  {
+    $project: {
+      monthCreated: { $month: "$createdAt" } // Extract month from createdAt field
+    }
+  },
+  {
+    $group: {
+      _id: "$monthCreated", // Group by month
+      totalUsers: { $sum: 1 } // Count the number of users in each month
+    }
+  },
+  {
+    $sort: {
+      _id: 1 // Sort by month in ascending order
+    }
+  }
+  ]);
+  res.json(users)
+});
 
 router.post("/", async (req, res) => {
   const { error } = validate(req.body)
