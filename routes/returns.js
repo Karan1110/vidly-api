@@ -23,7 +23,7 @@ router.post("/", [auth, validate(validateReturn)], async (req, res) => {
   user.movies.filter((m) => m.id === rental.movie._id);
   await user.save();
 
-  await Movie.update(
+  await Movie.updateOne(
     { _id: rental.movie._id },
     {
       $inc: { numberInStock: 1 },

@@ -15,6 +15,26 @@ router.get("/", auth, async (req, res) => {
   res.send(rentals);
 });
 
+router.get("/moviePrice/:movieId/:userId", async (req, res) => {
+  const movie = await Movie.findById(req.params.movieId);
+  const user = await User.findById(req.params.userId);
+  let rentalFee = movie.price;
+
+  if (user.points > 51) {
+    rentalFee = movie.price * (98 / 100);
+  } else if (user.points < 50 && user.points > 76) {
+    rentalFee = movie.price * (95 / 100);
+  } else if (user.points < 100) {
+    rentalFee = movie.price * (90 / 100);
+  } else if (user.points < 150) {
+    rentalFee = movie.price * (85 / 100);
+  } else if (user.points < 200) {
+    rentalFee = movie.price * (80 / 100);
+  }
+
+  res.send(rentalFee);
+});
+
 router.post("/", auth, async (req, res) => {
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
@@ -39,14 +59,17 @@ router.post("/", auth, async (req, res) => {
       title: movie.title,
       dailyRentalRate: movie.dailyRentalRate,
     },
+    rentalFee: req.body.rentalFee,
   });
 
   user.movies.push(movie);
+  user.points = user.points + 2;
   await user.save();
+
   try {
     await new Fawn.Task()
       .save("rentals", rental)
-      .update(
+      .updateOne(
         "movies",
         { _id: movie._id },
         {
@@ -69,7 +92,5 @@ router.get("/:id", [auth], async (req, res) => {
 
   res.send(rental);
 });
-
-
 
 module.exports = router;

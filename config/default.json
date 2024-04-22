@@ -2,5 +2,8 @@
   "jwtPrivateKey": "unsecureKey",
   "db": "mongodb://localhost:27017/test",
   "port": "3500",
-  "requiresAuth": true
+  "requiresAuth": true,
+  "cloudinary_api_key": "538459367684964",
+  "cloudinary_api_secret": "51oKGM47I-8nI5vAARdKrGoLUUI",
+  "cloudinary_cloud_name": "dd7slpjud"
 }
