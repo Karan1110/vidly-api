@@ -36,16 +36,6 @@ router.get("/random", async (req, res) => {
   res.json(movies);
 });
 
-router.get("/languages/:language", async (req, res) => {
-  const movies = await Movie.find({
-    languages: { $elemMatch: { $eq: req.params.language } },
-  })
-    .sort("-createdAt")
-    .select("-__v");
-
-  res.json(movies);
-});
-
 router.get("/mostLiked", auth, async (req, res) => {
   const mostLikedMovie = await Movie.aggregate([
     {
@@ -83,7 +73,7 @@ router.get("/search", auth, async (req, res) => {
         { title: new RegExp(req.query.search, "i") },
         { description: new RegExp(req.query.search, "i") },
         { cast: { $elemMatch: { $eq: req.query.search } } },
-        { languages: { $elemMatch: { $eq: req.query.search } } },
+
         { "genre.name": new RegExp(req.query.search, "i") },
         { price: new RegExp(req.query.search, "i") },
       ],
@@ -115,8 +105,8 @@ router.post(
     ]),
   ],
   async (req, res) => {
-    const { error } = validate(req.body);
-    if (error) return res.status(400).send(error.details[0].message);
+    // const { error } = validate(req.body);
+    // if (error) return res.status(400).send(error.details[0].message);
 
     const genre = await Genre.findById(req.body.genreId).select({
       _id: 1,
@@ -144,14 +134,11 @@ router.post(
       title: req.body.title,
       description: req.body.description,
       genre,
-      numberInStock: parseInt(req.body.numberInStock),
       cover: coverURL,
       video: videoURL,
-      languages: req.body.languages,
       ageLimit: req.body.ageLimit,
-      cast: req.body.cast,
-      crew: req.body.crew,
       releasedOn: req.body.releasedOn,
+      price: req.body.price,
     });
 
     movie = await movie.save();
@@ -260,9 +247,7 @@ router.put(
         _id: genre._id,
         name: genre.name,
       },
-      numberInStock: req.body.numberInStock,
       ageLimit: req.body.ageLimit,
-      languages: req.body.languages,
     };
 
     const coverFile = req.files["cover"][0];

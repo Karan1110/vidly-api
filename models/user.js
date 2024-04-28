@@ -39,12 +39,6 @@ const userSchema = new mongoose.Schema({
         type: genreSchema,
         required: true,
       },
-      numberInStock: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 255,
-      },
       cover: String,
       likes: {
         type: Number,
@@ -101,6 +95,7 @@ function validateUser(user) {
     name: Joi.string().min(2).max(50).required(),
     email: Joi.string().min(5).max(255).required().email(),
     password: Joi.string().min(5).max(255).required(),
+    age : Joi.number().required()
   };
 
   return Joi.validate(user, schema);

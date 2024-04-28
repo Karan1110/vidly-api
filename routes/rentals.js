@@ -54,9 +54,6 @@ router.post("/", auth, async (req, res) => {
   const movie = await Movie.findById(req.body.movieId);
   if (!movie) return res.status(400).send("Invalid movie.");
 
-  if (movie.numberInStock === 0)
-    return res.status(400).send("Movie not in stock.");
-
   let rental = new Rental({
     user: {
       _id: user._id,
@@ -78,13 +75,6 @@ router.post("/", auth, async (req, res) => {
   try {
     await new Fawn.Task()
       .save("rentals", rental)
-      .updateOne(
-        "movies",
-        { _id: movie._id },
-        {
-          $inc: { numberInStock: -1 },
-        }
-      )
       .run();
 
     res.send(rental);
