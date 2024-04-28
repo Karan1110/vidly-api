@@ -1,6 +1,6 @@
 {
   "jwtPrivateKey": "unsecureKey",
-  "db": "mongodb://localhost:27017/test",
+  "db": "mongodb://localhost:27017/netflix",
   "port": "3500",
   "requiresAuth": true,
   "cloudinary_api_key": "538459367684964",

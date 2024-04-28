@@ -45,12 +45,6 @@ const userSchema = new mongoose.Schema({
         min: 0,
         max: 255,
       },
-      dailyRentalRate: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 255,
-      },
       cover: String,
       likes: {
         type: Number,

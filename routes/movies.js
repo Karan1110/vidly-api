@@ -37,20 +37,13 @@ router.get("/random", async (req, res) => {
 });
 
 router.get("/languages/:language", async (req, res) => {
-  await Movie.aggregate([
-    {
-      $sort: {
-        createdAt: -1,
-      },
-    },
-    {
-      $match: {
-        languages: {
-          $contains,
-        },
-      },
-    },
-  ]);
+  const movies = await Movie.find({
+    languages: { $elemMatch: { $eq: req.params.language } },
+  })
+    .sort("-createdAt")
+    .select("-__v");
+
+  res.json(movies);
 });
 
 router.get("/mostLiked", auth, async (req, res) => {
@@ -71,7 +64,7 @@ router.get("/mostLiked", auth, async (req, res) => {
   res.status(200).send(mostLikedMovie);
 });
 
-router.get("/highlyRated",auth, async (req, res) => {
+router.get("/highlyRated", auth, async (req, res) => {
   const movies = await Movie.find({
     ageLimit: {
       $lte: req.user.age,
@@ -79,34 +72,23 @@ router.get("/highlyRated",auth, async (req, res) => {
   })
     .sort("-averageRating")
     .select("-__v");
-  
+
   res.json(movies);
 });
 
 router.get("/search", auth, async (req, res) => {
   try {
-    console.log("karan!!");
-    if (typeof req.query.title !== "string" || req.query.title.trim() === "") {
-      return res.status(400).send("Invalid title parameter");
-    }
-
-    let movies;
-
-    if (req.query.title) {
-      movies = await Movie.find({ title: req.query.title });
-    } else if (req.query.dailyRentalRate) {
-      movies = await Movie.find({
-        dailyRentalRate: { $gte: req.query.dailyRentalRate },
-      });
-    } else {
-      return res.status(400).send("Invalid search parameters");
-    }
-
-    if (movies.length === 0) {
-      return res.status(404).send("No movies found matching the criteria.");
-    }
-
-    res.send(movies);
+    const movies = await Movie.find({
+      $or: [
+        { title: new RegExp(req.query.search, "i") },
+        { description: new RegExp(req.query.search, "i") },
+        { cast: { $elemMatch: { $eq: req.query.search } } },
+        { languages: { $elemMatch: { $eq: req.query.search } } },
+        { "genre.name": new RegExp(req.query.search, "i") },
+        { price: new RegExp(req.query.search, "i") },
+      ],
+    }).select("-video");
+    res.json(movies);
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error");
@@ -136,7 +118,11 @@ router.post(
     const { error } = validate(req.body);
     if (error) return res.status(400).send(error.details[0].message);
 
-    const genre = await Genre.findById(req.body.genreId);
+    const genre = await Genre.findById(req.body.genreId).select({
+      _id: 1,
+      name: 1,
+    });
+
     if (!genre) return res.status(400).send("Invalid genre.");
 
     // Check if file is present
@@ -156,24 +142,22 @@ router.post(
     let movie = new Movie({
       _id: mongoose.Types.ObjectId(),
       title: req.body.title,
-      genre: {
-        _id: genre._id,
-        name: genre.name,
-      },
+      description: req.body.description,
+      genre,
       numberInStock: parseInt(req.body.numberInStock),
-      dailyRentalRate: parseInt(req.body.dailyRentalRate),
-      publishDate: moment().toJSON(),
       cover: coverURL,
       video: videoURL,
       languages: req.body.languages,
       ageLimit: req.body.ageLimit,
+      cast: req.body.cast,
+      crew: req.body.crew,
+      releasedOn: req.body.releasedOn,
     });
 
     movie = await movie.save();
     res.send(movie);
   }
 );
-
 
 router.post("/watchlist/add", auth, async (req, res) => {
   let movie = await Movie.findById(req.body.movie_id);
@@ -277,7 +261,6 @@ router.put(
         name: genre.name,
       },
       numberInStock: req.body.numberInStock,
-      dailyRentalRate: req.body.dailyRentalRate,
       ageLimit: req.body.ageLimit,
       languages: req.body.languages,
     };

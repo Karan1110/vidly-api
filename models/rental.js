@@ -4,39 +4,40 @@ const moment = require("moment");
 const { userSchema } = require("./user.js");
 const { User } = require("./user.js");
 
-const rentalSchema = new mongoose.Schema({
-  user: {
-    type: userSchema,
-    required: true,
+const rentalSchema = new mongoose.Schema(
+  {
+    user: {
+      type: userSchema,
+      required: true,
+    },
+    movie: {
+      type: new mongoose.Schema({
+        title: {
+          type: String,
+          required: true,
+          trim: true,
+          minlength: 5,
+          maxlength: 255,
+        },
+        description: {
+          type: String,
+          required: true,
+        },
+      }),
+      required: true,
+    },
+    dateReturned: {
+      type: Boolean,
+    },
+    rentalFee: {
+      type: Number,
+      required: true,
+    },
   },
-  movie: {
-    type: new mongoose.Schema({
-      title: {
-        type: String,
-        required: true,
-        trim: true,
-        minlength: 5,
-        maxlength: 255,
-      },
-      dailyRentalRate: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 255,
-      },
-    }),
-    required: true,
-  },
-  dateOut: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
-  dateReturned: {
-    type: Date,
-  },
-  rentalFee: Number,
-});
+  {
+    timestamps: true,
+  }
+);
 
 rentalSchema.statics.lookup = function (userId, movieId) {
   return this.findOne({
@@ -47,7 +48,7 @@ rentalSchema.statics.lookup = function (userId, movieId) {
 
 rentalSchema.methods.return = async function () {
   this.dateReturned = new Date();
-  const rentalDays = moment().diff(this.dateOut, "days");
+  const rentalDays = moment().diff(this.createdAt, "days");
 
   if (rentalDays > 30) {
     return;

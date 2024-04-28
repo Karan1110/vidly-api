@@ -113,7 +113,7 @@ describe('/api/returns', () => {
   });
 
   it('should set the rentalFee if input is valid', async () => {
-    rental.dateOut = moment().add(-7, 'days').toDate();
+    rental.createdAt = moment().add(-7, 'days').toDate();
     await rental.save();
 
     const res = await exec();
@@ -135,7 +135,7 @@ describe('/api/returns', () => {
     const rentalInDb = await Rental.findById(rental._id);
 
     expect(Object.keys(res.body)).toEqual(
-      expect.arrayContaining(['dateOut', 'dateReturned', 'rentalFee',
+      expect.arrayContaining(['createdAt', 'dateReturned', 'rentalFee',
       'user', 'movie']));
   });
 });

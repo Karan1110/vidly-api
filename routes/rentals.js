@@ -11,8 +11,17 @@ mongoose.connect(config.get("db"));
 Fawn.init(mongoose);
 
 router.get("/", auth, async (req, res) => {
-  const rentals = await Rental.find().select("-__v").sort("-dateOut");
+  const rentals = await Rental.find().select("-__v").sort("-createdAt");
   res.send(rentals);
+});
+
+router.get("/users/:id", async (req, res) => {
+  const rentals = await Rental.find({
+    "user._id": req.params.id,
+  })
+    .sort("-createdAt")
+    .select("-__v");
+  res.json(rentals);
 });
 
 router.get("/moviePrice/:movieId/:userId", async (req, res) => {
@@ -57,7 +66,7 @@ router.post("/", auth, async (req, res) => {
     movie: {
       _id: movie._id,
       title: movie.title,
-      dailyRentalRate: movie.dailyRentalRate,
+      description: movie.description,
     },
     rentalFee: req.body.rentalFee,
   });
