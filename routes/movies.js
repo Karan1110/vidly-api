@@ -99,10 +99,7 @@ router.post(
   "/",
   [
     auth,
-    upload.fields([
-      { name: "cover", maxCount: 1 },
-      { name: "video", maxCount: 1 },
-    ]),
+    upload.fields([{ name: "thumbnail", maxCount: 1 }, { name: "video" }]),
   ],
   async (req, res) => {
     // const { error } = validate(req.body);
@@ -116,28 +113,29 @@ router.post(
     if (!genre) return res.status(400).send("Invalid genre.");
 
     // Check if file is present
-    if (!req.files || !req.files["cover"] || !req.files["video"]) {
-      return res.status(400).send("Cover file and video file are required.");
+    if (!req.files || !req.files["thumbnail"] || !req.files["video"]) {
+      return res
+        .status(400)
+        .send("thumbnail file and video file are required.");
     }
 
-    const coverFile = req.files["cover"][0];
+    const thumbnailFile = req.files["thumbnail"][0];
     const videoFile = req.files["video"][0];
 
-    const coverPublicId = uuidv4() + "_cover_" + req.body.title;
+    const thumbnailPublicId = uuidv4() + "_thumbnail_" + req.body.title;
     const videoPublicId = uuidv4() + "_video_" + req.body.title;
 
-    const coverURL = uploader(coverFile, coverPublicId);
-    const videoURL = uploader(videoFile, videoPublicId, "video");
+    const thumbnailURL = await uploader(thumbnailFile, thumbnailPublicId);
+    const videoURL = await uploader(videoFile, videoPublicId, "video");
 
     let movie = new Movie({
       _id: mongoose.Types.ObjectId(),
       title: req.body.title,
       description: req.body.description,
       genre,
-      cover: coverURL,
+      thumbnail: thumbnailURL,
       video: videoURL,
       ageLimit: req.body.ageLimit,
-      releasedOn: req.body.releasedOn,
       price: req.body.price,
     });
 
@@ -225,7 +223,7 @@ router.put(
   [
     auth,
     upload.fields([
-      { name: "cover", maxCount: 1 },
+      { name: "thumbnail", maxCount: 1 },
       { name: "video", maxCount: 1 },
     ]),
   ],
@@ -237,8 +235,10 @@ router.put(
     if (!genre) return res.status(400).send("Invalid genre.");
 
     // Check if file is present
-    if (!req.files || !req.files["cover"] || !req.files["video"]) {
-      return res.status(400).send("Both cover and video files are required.");
+    if (!req.files || !req.files["thumbnail"] || !req.files["video"]) {
+      return res
+        .status(400)
+        .send("Both thumbnail and video files are required.");
     }
 
     const updatedMovie = {
@@ -250,17 +250,17 @@ router.put(
       ageLimit: req.body.ageLimit,
     };
 
-    const coverFile = req.files["cover"][0];
+    const thumbnailFile = req.files["thumbnail"][0];
     const videoFile = req.files["video"][0];
 
-    const coverPublicId = uuidv4() + "_cover_" + req.body.title;
+    const thumbnailPublicId = uuidv4() + "_thumbnail_" + req.body.title;
     const videoPublicId = uuidv4() + "_video_" + req.body.title;
 
-    const coverURL = uploader(coverFile, coverPublicId);
+    const thumbnailURL = uploader(thumbnailFile, thumbnailPublicId);
     const videoURL = uploader(videoFile, videoPublicId, "video");
 
     // Update movie document with the new file names
-    updatedMovie.cover = coverURL;
+    updatedMovie.thumbnail = thumbnailURL;
     updatedMovie.video = videoURL;
 
     const movie = await Movie.findByIdAndUpdate(req.params.id, updatedMovie, {

@@ -24,7 +24,7 @@ const movieSchema = new mongoose.Schema({
     max: 1000,
   },
   video: String,
-  cover: String,
+  thumbnail: String,
   averageRating: {
     type: Number,
     default: 0,
@@ -46,15 +46,11 @@ const movieSchema = new mongoose.Schema({
     ],
     required: false,
   },
- 
+
   ageLimit: {
     type: Number,
     default: 8,
     required: false,
-  },
-  releasedOn: {
-    type: Date,
-    required: true,
   },
 });
 
@@ -63,13 +59,12 @@ const Movie = mongoose.model("Movies", movieSchema);
 function validateMovie(movie) {
   const schema = {
     title: Joi.string().min(5).max(50).required(),
-    description : Joi.string(),
+    description: Joi.string(),
     genreId: Joi.objectId().required(),
     ageLimit: Joi.number(),
-    price : Joi.number(),
+    price: Joi.number(),
     video: Joi.required(),
-    releasedOn : Joi.date(),
-    cover: Joi.required(),
+    thumbnail: Joi.required(),
   };
 
   return Joi.validate(movie, schema);
