@@ -1,10 +1,8 @@
-require("events").EventEmitter.defaultMaxListeners = 15;
 const { Movie, validate } = require("../models/movie");
 const { Genre } = require("../models/genre");
 const auth = require("../middleware/auth");
 const adminMiddleware = require("../middleware/admin");
 const validateObjectId = require("../middleware/validateObjectId");
-const moment = require("moment");
 const mongoose = require("mongoose");
 const express = require("express");
 const multer = require("multer");
@@ -12,6 +10,7 @@ const router = express.Router();
 const { User } = require("../models/user.js");
 const uploader = require("../utils/uploader");
 const storage = multer.memoryStorage();
+const { Rental } = require("../models/rental.js");
 const upload = multer({ storage: storage });
 const { v4: uuidv4 } = require("uuid");
 
@@ -19,20 +18,53 @@ router.get("/", async (req, res) => {
   const movies = await Movie.find().select("-__v").sort("-createdAt");
   res.send(movies);
 });
+router.get("/trending", async (req, res) => {
+  try {
+    // Define the start date of the time frame for trending movies (e.g., past week)
+    const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-router.get("/random", async (req, res) => {
+    // Aggregate rentals within the defined time frame
+    const trendingMovies = await Rental.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }, // Filter rentals within the time frame
+        },
+      },
+      {
+        $group: {
+          _id: "$movie._id",
+          rentalCount: { $sum: 1 }, // Count the number of rentals for each movie
+        },
+      },
+      {
+        $sort: { rentalCount: -1 }, // Sort movies by rental count in descending order
+      },
+    ]);
+
+    const movies = trendingMovies.map((m) => m.movie);
+
+    res.json(movies);
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+// todo 
+router.get("random",async (req,res)=>{
   const movies = await Movie.aggregate([
-    {
-      $match: {
-        "genre.name": req.query.genre,
-      },
-    },
-    {
-      $sample: {
-        size: 50,
-      },
-    },
+   { $sample : {
+      size: 10
+    }
+    }
   ]);
+  res.json(movies);
+})
+router.get("/genres", async (req, res) => {
+  const movies = await Movie.find({
+    "genre.name": new RegExp(req.query.genre),
+  })
+    .sort("-createdAt")
+    .select("-video");
   res.json(movies);
 });
 
@@ -168,6 +200,7 @@ router.post("/ratings/add", auth, async (req, res) => {
     user: req.user.name, // Assuming you have a way to identify the user
   };
 
+  movie.ratings.push(newRating);
   const totalRatings = movie.ratings.length;
 
   if (totalRatings === 0) {
@@ -180,14 +213,13 @@ router.post("/ratings/add", auth, async (req, res) => {
   } else {
     return;
   }
-
-  movie.ratings.push(newRating);
+``
   movie.averageRating = averageRating;
   await movie.save();
 
   res.status(200).send("your  rating has been added.");
 });
-
+// todo
 router.post("/watchlist/remove", auth, async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) return res.status(400).send("User not found");
@@ -196,26 +228,6 @@ router.post("/watchlist/remove", auth, async (req, res) => {
   movie.remove();
   await user.save();
   res.status(200).send("Movie removed from your watchlist!");
-});
-
-router.post("/like/add", auth, async (req, res) => {
-  const movie = await Movie.findOneAndUpdate(
-    { _id: req.body.movie_id },
-    { $inc: { likes: 1 } },
-    { new: true } // Return the updated document
-  );
-  if (!movie) return res.status(404).send("Movie not found");
-  res.status(200).send("Like added to the movie!");
-});
-
-router.post("/like/remove", auth, async (req, res) => {
-  const movie = await Movie.findOneAndUpdate(
-    { _id: req.body.movie_id },
-    { $inc: { likes: -1 } },
-    { new: true } // Return the updated document
-  );
-  if (!movie) return res.status(404).send("Movie not found");
-  res.status(200).send("Like removed from the movie!");
 });
 
 router.put(

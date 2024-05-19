@@ -41,7 +41,10 @@ const movieSchema = new mongoose.Schema({
       new mongoose.Schema({
         rating: Number,
         review: String,
-        user: String,
+        user: {
+          type: String,
+          unique: true,
+        },
       }),
     ],
     required: false,

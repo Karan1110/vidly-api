@@ -7,7 +7,6 @@ const Fawn = require("fawn");
 const config = require("config");
 const express = require("express");
 const router = express.Router();
-mongoose.connect(config.get("db"));
 Fawn.init(mongoose);
 
 router.get("/", auth, async (req, res) => {
@@ -45,10 +44,11 @@ router.get("/moviePrice/:movieId/:userId", async (req, res) => {
 });
 
 router.post("/", auth, async (req, res) => {
-  const { error } = validate(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
+  // TODO : fix input validation
+  // const { error } = validate(req.body);
+  // if (error) return res.status(400).send(error.details[0].message);
 
-  const user = await User.findById(req.body.userId);
+  const user = await User.findById(req.user._id);
   if (!user) return res.status(400).send("Invalid user.");
 
   const movie = await Movie.findById(req.body.movieId);
